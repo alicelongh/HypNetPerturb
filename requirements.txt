@@ -1,0 +1,9 @@
+numpy>=1.23
+scipy>=1.9
+networkx>=2.8
+scikit-learn>=1.2
+matplotlib>=3.6
+pytest>=7.0
+hyperbolic
+drawsvg=2.4.1
+plotly
