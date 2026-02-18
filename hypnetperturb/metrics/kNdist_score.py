@@ -8,6 +8,7 @@ import networkx as nx
 from hypnetperturb.embedding.distance import *
 from hypnetperturb.embedding.coalescent_embedding import coalescent_embedding_2D
 from hypnetperturb.embedding.diffusion_embedding import diffusion_map
+import inspect
 
 def k_argmin(a, k): 
     """
@@ -235,7 +236,7 @@ def from_KNNmatrix_to_scores_Eucl(coords_gpC, knn_matrix_gpC, coords_gpA):
         
     return scores_arr   
 
-def two_nets_kNHD_score(G1, G2, k, beta, eta, dim_red_meth='SPECTRAL'):
+def two_nets_kNHD_score(G1, G2, k, **emb_kwargs):
     """
     computing kNHD score between 2 networks after embedding with Coalescent method
 
@@ -246,11 +247,15 @@ def two_nets_kNHD_score(G1, G2, k, beta, eta, dim_red_meth='SPECTRAL'):
     beta,eta: embedding parameters
 
     """
+    # Keep only kwargs that coalescent_embedding_2D accepts
+    sig = inspect.signature(coalescent_embedding_2D)
+    allowed = set(sig.parameters.keys())
+    emb_kwargs = {k: v for k, v in emb_kwargs.items() if k in allowed}
 
     #coalescent embedding
-    dict_xy = coalescent_embedding_2D(G1, beta=beta, eta=eta, dim_red_meth=dim_red_meth)
+    dict_xy = coalescent_embedding_2D(G1, **emb_kwargs)
     xy = np.array(list(dict_xy.values()))
-    dict_xy_p = coalescent_embedding_2D(G2, beta=beta, eta=eta, dim_red_meth=dim_red_meth)
+    dict_xy_p = coalescent_embedding_2D(G2, **emb_kwargs)
     xy2 = np.array(list(dict_xy_p.values()))
     
     #knn score
