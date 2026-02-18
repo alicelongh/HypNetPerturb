@@ -1,7 +1,7 @@
 import numpy as np
 import tempfile
 import os
-import mercator
+import mercator # https://github.com/networkgeometry/mercator?tab=readme-ov-file#command-line-executable
 
 def run_mercator_temp(edgelist, fast_mode=True):
 
