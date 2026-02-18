@@ -1,6 +1,6 @@
 import numpy as np
 import networkx as nx
-from .embedding.distance import create_nan, convert_cartesian_polar
+from hypnetperturb.embedding.distance import create_nan, convert_cartesian_polar
 
 
 def eucl_dist_matrix(arr1, arr2): 

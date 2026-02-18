@@ -2,7 +2,7 @@ import numpy as np
 from drawsvg import Drawing, Circle, Line, Text
 import drawsvg as draw
 import euclid   
-import matplotlpipib.pyplot as plt
+import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 from hyperbolic import euclid, util
@@ -29,7 +29,6 @@ def plot_hyperbolic_embedding_1(X, r, zmax, colors=None, sizes=None): #@Lili,mod
     ax.set_xlim(-r, r)
     ax.set_ylim(-r, r)
     ax.set_zlim(0, zmax)
-    ax.set_title('time %.1f'%t)
 
     plt.rcParams['axes.linewidth'] = 2 
         
@@ -228,7 +227,7 @@ def plot_Pdisk_embedding_n(Y, edgelist=None, edgelist_colors=None, node_colors=N
 
     for i in range(len(Y[:,0])):
         #pt = Point(Y[i,0],Y[i,1])
-        pt = from_euclid(Y[i,0],Y[i,1])
+        pt = Point(Y[i,0],Y[i,1])
         d.draw(pt, hradius=sizes[i], fill=node_colors[i])
         #d.draw(draw.Text(str(i), 0.01, *pt, center=0.7))
         pts.append(pt)
@@ -272,7 +271,7 @@ def plot_Pdisk_embedding(Y, edgelist=None, edgelist_colors=None, node_colors=Non
 
     for i in range(len(Y[:,0])):
         #pt = Point(Y[i,0],Y[i,1])
-        pt = from_euclid(Y[i,0],Y[i,1])
+        pt = Point(Y[i,0],Y[i,1])
         d.draw(pt, hradius=sizes[i], fill=node_colors[i])
         #d.draw(draw.Text(str(i), 0.01, *pt, center=0.7))
         pts.append(pt)

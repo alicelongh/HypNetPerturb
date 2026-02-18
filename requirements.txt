@@ -7,3 +7,6 @@ pytest>=7.0
 hyperbolic
 drawsvg=2.4.1
 plotly
+euclid
+pandas
+seaborn

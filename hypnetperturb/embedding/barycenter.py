@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import copy
 
 ###
 ### BARYCENTER COMPUTATION IN THE HYPERBOLIC SPACE ###
@@ -286,3 +287,85 @@ def mobius_centroid(X, curv=1):
         
     return mobius_sum/len(X[:,0])
 
+
+
+# Compute centroid in the hyperboloid model - tangent points method
+
+def compute_centroid(X, nb, dim, r=1): 
+    
+    # Owner @Lili
+    # modif @Ali: added return covariance matrix
+
+    """
+    Parameters
+    ----------
+    X : Coordinates of the point in the hyperbolic space
+    
+    nb : Number of iterations
+
+    dim : Dimension of the hyperbolic space
+
+    r : Radius of curvature 
+
+    Returns
+    -------
+    X_c : Coordinates of the centroid in the hyperbolic space
+
+    """
+    # Initialisation of the centroid 
+    init = np.random.randint(np.shape(X)[0])
+    
+    X_c = copy.deepcopy(X[init])
+    
+    for k in range(nb):
+        # Map points onto tangent plane
+        X_tangent = np.zeros((np.shape(X)))
+        X_tangent[init] = [0]*(dim)
+        for i in range(np.shape(X)[0]):
+            if i != init:
+                if -inner_product(X[i], X_c)/(r**2) < 1:
+                    theta_i = np.arccosh(1)
+                    theta_i = theta_i.real
+
+                if -inner_product(X[i], X_c)/(r**2) >= 1:    
+                    theta_i = np.arccosh(-inner_product(X[i], X_c)/(r**2))
+                    theta_i = theta_i.real
+
+                if theta_i != 0:
+                    X_tangent[i] = (theta_i/np.sinh(theta_i))*(X[i] - X_c*np.cosh(theta_i)) # Log Map
+
+                else:
+                    X_tangent[i] = [0]*(dim)
+
+        # Compute centroid on tangent plane 
+        X_tangent_centroid = np.zeros(dim)
+        for i in range(dim):
+            X_tangent_centroid[i] = np.mean(X_tangent[:, i])
+            
+        # Locate new centroid position
+        theta = np.sqrt(inner_product(X_tangent_centroid, X_tangent_centroid))/r
+        if abs(theta) > 1e-8:
+                X_c = X_c*np.cosh(theta) + (np.sinh(theta)/theta)*X_tangent_centroid  # Exp Map
+
+    X_tangent_centered = np.column_stack((X_tangent[:,0]-np.ones(len(X))*X_c[0], X_tangent[:,1]-np.ones(len(X))*X_c[1]))
+    cov = np.cov(X_tangent_centered.transpose())
+
+    return(X_c, cov)
+
+
+# Compute matrix of geodesic distances 
+
+def inner_product(X, Y): #@Lili
+    s = 0
+    for k in range(np.shape(X)[0] - 1):
+        s += X[k]*Y[k]
+    s = s - X[-1]*Y[-1]
+    return(s)
+
+def D_hyperbolic(X, r): #@Lili
+    D_prime = np.zeros((np.shape(X)[0], np.shape(X)[0]))
+    for i in range(np.shape(X)[0]):
+        for j in range(np.shape(X)[0]):
+            if i != j:
+                D_prime[i, j] = r*np.arccosh(- inner_product(X[i], X[j])/(r**2))
+    return(D_prime)

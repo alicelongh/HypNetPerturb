@@ -5,7 +5,7 @@ print("python:", sys.executable)
 
 import numpy as np
 import networkx as nx
-from hypnetperturb.embedding.distance import create_nan, hyp_dist, hyp_dist_matrix
+from hypnetperturb.embedding.distance import *
 from hypnetperturb.embedding.coalescent_embedding import coalescent_embedding_2D
 from hypnetperturb.embedding.diffusion_embedding import diffusion_map
 
@@ -91,7 +91,7 @@ def from_embedding_to_idxKNNmatrix_Eucl(coords_gp1, coords_gp2, k):
 
     """
     
-    distance_matrix = euclidean_dist_matrix(coords_gp1, coords_gp2)
+    distance_matrix = eucl_dist_matrix(coords_gp1, coords_gp2)
     distance_matrix = np.asmatrix(distance_matrix)
     
     if (coords_gp1==coords_gp2).all()==True: # if the the distance matrix if computed between the same group of points, the diagonal (in which every value is 0) has to be excluded from the derivation of the k smaller elements
@@ -255,7 +255,7 @@ def two_nets_kNHD_score(G1, G2, k, beta, eta, dim_red_meth='SPECTRAL'):
     
     #knn score
     knn_matrix_OO = from_embedding_to_idxKNNmatrix(xy, xy, k)
-    knn_scores_OP = from_KNNmatrix_to_scores(xy, knn_matrix_OO, xy2)
+    knn_scores_OP = from_KNNmatrix_to_scores_hyp(xy, knn_matrix_OO, xy2)
 
     return knn_scores_OP
 

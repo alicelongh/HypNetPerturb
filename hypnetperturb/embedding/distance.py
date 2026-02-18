@@ -17,7 +17,7 @@ def create_nan(shape):
     return a
 
 
-def convert_cartesian_polar(x,y):
+def cartesian_to_polar(x,y):
     """
 
     Parameters
@@ -48,7 +48,7 @@ def convert_cartesian_polar(x,y):
 
     return r, th
 
-def convert_polar_cartesian(r,th):
+def polar_to_cartesian(r,th):
     
     if np.isscalar(r)==True:
         
@@ -68,6 +68,40 @@ def convert_polar_cartesian(r,th):
     return x, y
 
 
+def native_to_poincare(coords):
+    x = coords[:,0]
+    y = coords[:,1]
+
+    r = np.sqrt(x**2 + y**2)
+    theta = np.arctan2(y, x)
+
+    r_poincare = np.tanh(r / 2)
+
+    # SAFETY MARGIN x plot
+    r_p = np.minimum(r_poincare, 1 - 1e-6)
+    r_p = r_p*0.98/np.max(r_p)
+
+    x_p = r_p * np.cos(theta)
+    y_p = r_p * np.sin(theta)
+
+    return np.column_stack([x_p, y_p])
+
+
+def native_to_unitnative(coords):
+    x = coords[:,0]
+    y = coords[:,1]
+
+    r = np.sqrt(x**2 + y**2)
+    theta = np.arctan2(y, x)
+
+    r_unit = r/np.max(r)
+
+    x_unit = r_unit * np.cos(theta)
+    y_unit = r_unit * np.sin(theta)
+
+    return np.column_stack([x_unit, y_unit])
+
+
 def normalize_radius(coordsxy):
     
     """
@@ -76,10 +110,10 @@ def normalize_radius(coordsxy):
     x = coordsxy[:,0]
     y = coordsxy[:,1]
     
-    r,th = convert_cartesian_polar(x, y)
+    r,th = cartesian_to_polar(x, y)
     r = r/np.max(r)
     
-    x,y = convert_polar_cartesian(r,th)
+    x,y = polar_to_cartesian(r,th)
     
     coordsxy_new = np.column_stack([x,y])
     
@@ -105,8 +139,8 @@ def hyp_dist(arr1, arr2, ref="cart"): #change it to work with operations between
         x_1, y_1 = arr1[0], arr1[1]
         x_2, y_2 = arr2[0], arr2[1]
         
-        r_1, theta_1 = convert_cartesian_polar(x_1, y_1)
-        r_2, theta_2 = convert_cartesian_polar(x_2, y_2)
+        r_1, theta_1 = cartesian_to_polar(x_1, y_1)
+        r_2, theta_2 = cartesian_to_polar(x_2, y_2)
 
     elif ref=="polar":
         r_1, theta_1 = arr1[0], arr1[1]
@@ -114,9 +148,10 @@ def hyp_dist(arr1, arr2, ref="cart"): #change it to work with operations between
     
     cosh_d = np.cosh(r_1)*np.cosh(r_2) - np.sinh(r_1)*np.sinh(r_2)*np.cos((np.pi-np.abs(np.pi-np.abs(theta_1-theta_2))))
     
-    if cosh_d < 1 : 
-        print('[E] Correction cosh_d <1 : ', cosh_d)
-        cosh_d = 1
+    cosh_d = np.clip(cosh_d, 1.0, None)
+    #if cosh_d < 1 : 
+    #    print('[E] Correction cosh_d <1 : ', cosh_d)
+    #    cosh_d = 1
         
     dist = np.arccosh(cosh_d)
     
@@ -145,7 +180,7 @@ def eucl_dist(coord_1, coord_2):
     return dist
 
 
-def eucl_dist_matrix(arr1, arr2):
+def eucl_dist_arr(arr1, arr2):
     """ 
     distance matrix between two arrays of coordinates
 
@@ -179,25 +214,7 @@ def eucl_dist_matrix(arr1, arr2):
     
     return dist
 
-def euclidean_dist_matrix_trick(x, y): #from: euclidean_trick https://github.com/eth-cscs/PythonHPC/blob/master/numpy/03-euclidean-distance-matrix-numpy.ipynb
-    """Euclidean square distance matrix.
-    
-    Inputs:
-    x: (N, m) numpy array
-    y: (N, m) numpy array
-    
-    Ouput:
-    (N, N) Euclidean square distance matrix:
-    r_ij = (x_ij - y_ij)^2
-    """
-    x2 = np.einsum('ij,ij->i', x, x)[:, np.newaxis]
-    y2 = np.einsum('ij,ij->i', y, y)[np.newaxis, :]
-
-    xy = x @ y.T
-
-    return np.sqrt(x2 + y2 - 2. * xy)
-
-def hyp_dist_matrix(arr1, arr2):
+def hyp_dist_arr(arr1, arr2):
     """ 
     distance matrix between two arrays of coordinates
 
@@ -233,16 +250,12 @@ def hyp_dist_matrix(arr1, arr2):
         
     #     dist[i] = hyp_dist_2p(arr1[i,:], arr2[i,:])
 
-    r1, th1 = convert_cartesian_polar(arr1[:,0], arr1[:,1])   
-    r2, th2 = convert_cartesian_polar(arr2[:,0], arr2[:,1])
+    r1, th1 = cartesian_to_polar(arr1[:,0], arr1[:,1])   
+    r2, th2 = cartesian_to_polar(arr2[:,0], arr2[:,1])
     
     cosh_d = np.cosh(r1)*np.cosh(r2) - np.sinh(r1)*np.sinh(r2)*np.cos((np.pi-np.abs(np.pi-np.abs(th1-th2))))
-    dist = np.arccosh(cosh_d)
-        
-    # I should test this more but it appears that nan is given when cosh_d = 1. 
-    # dist[np.where(cosh_d==1.)[0]]=0 this does not work, I think the bool statement with float numbers is incorrect
-    ind_nan = np.where(np.isnan(dist))[0]
-    dist[ind_nan]=0
+    cosh_d = np.clip(cosh_d, 1.0, None)
+    dist = np.arccosh(cosh_d) 
     
     if (np.all(dist==0.0))==True:
         print(r1,r2,th1,th2)
@@ -253,5 +266,67 @@ def hyp_dist_matrix(arr1, arr2):
     
     return dist
 
+def hyp_dist_arr_(set1, set2): #ok gp 
+    # Compute hyperbolic distance between two sets of points 
+    x1, y1 = set1[:, 0], set1[:, 1] 
+    x2, y2 = set2[:, 0], set2[:, 1] 
 
+    # Convert to polar coordinates 
+    r_1, theta_1 = np.sqrt(x1**2 + y1**2), np.arctan2(y1, x1) 
+    r_2, theta_2 = np.sqrt(x2**2 + y2**2), np.arctan2(y2, x2) 
 
+    # Compute hyperbolic distance using the provided formula 
+    cosh_d = np.cosh(r_1) * np.cosh(r_2) - np.sinh(r_1) * np.sinh(r_2) * np.cos(np.pi - np.abs(np.pi - np.abs(theta_1 - theta_2))) 
+    dist_arr = np.arccosh(cosh_d) 
+
+    return dist_arr
+
+def eucl_dist_matrix(x, y): #from: euclidean_trick https://github.com/eth-cscs/PythonHPC/blob/master/numpy/03-euclidean-distance-matrix-numpy.ipynb
+    """Euclidean square distance matrix.
+    
+    Inputs:
+    x: (N, m) numpy array
+    y: (N, m) numpy array
+    
+    Ouput:
+    (N, N) Euclidean square distance matrix:
+    r_ij = (x_ij - y_ij)^2
+    """
+    x2 = np.einsum('ij,ij->i', x, x)[:, np.newaxis]
+    y2 = np.einsum('ij,ij->i', y, y)[np.newaxis, :]
+
+    xy = x @ y.T
+
+    return np.sqrt(x2 + y2 - 2. * xy)
+
+def hyp_dist_matrix(gp1, gp2):
+    """
+    Returns the matrix of all pair-wise distances.
+    
+    gp1: array of coordinates (x,y)
+    
+    """
+    
+    l = len(gp1)
+    dist_matrix = create_nan((l,l))
+    
+    gp1 = np.asarray(gp1)
+    m, k = gp1.shape
+    
+    gp2 = np.asarray(gp2)
+    n, kk = gp2.shape
+
+    if k != kk:
+        raise ValueError("gp1 contains %d-dimensional vectors but gp2 contains %d-dimensional vectors" % (k, kk))
+    
+    for i in range(l):
+        
+        dist_matrix[:,i] = hyp_dist_arr(gp1[i,:]*np.ones((l,2)), gp2)
+               
+    # if np.any(np.isnan(dist_matrix))==True:
+    #       raise ValueError("NaN value in distance array, some distance is not computed correctly")
+    
+    # some nan values come out from "invalid value encountered in arccosh", how can I deal with them?
+    # for now I will keep them in the distance matrix and then skip them when selecting the k nearest neighbors 
+    
+    return dist_matrix

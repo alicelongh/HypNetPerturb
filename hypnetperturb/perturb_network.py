@@ -5,6 +5,7 @@
 
 import numpy as np
 import random
+from hypnetperturb.utils import *
 
 ###
 ### Generate NETWORK Perturbations ###

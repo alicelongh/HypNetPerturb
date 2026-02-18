@@ -12,33 +12,34 @@ import random
 from hypnetperturb.embedding.distance import *
 
 
-###
-### COALESCENT EMBEDDING: from the graph to the embedding, with a dimension reduction method and a circular adjustement ###
-###
+#============================================================================================================================
+### COALESCENT EMBEDDING: from the graph to the embedding, with a dimension reduction method and a circular adjustement
+#============================================================================================================================
     
-def coalescent_embedding_2D(G, pre_weight=True, unweighted_dm=True, dim_red_meth='SPECTRAL', eq_adj=True, eta=1, beta=1, res_dict=True, weight=None):
+def coalescent_embedding_2D(G, pre_weight=True, binarize=True, dim_red_method='SPECTRAL', eq_adj=True, eta_r=1, beta_r=1, weight_r=False, res_dict=True):
     """
 
     Parameters
     ----------
     G : nx.graph()
-        Graph tp embed
+        Graph to embed
+    binarize: boolean
+        If we don't use the edge weights of the original graph
     pre_weight : boolean
-        If preweighting the edge is needed
-    unweighted_dm : boolean
-        If don't use the edges weigth of the original graph
+        If pre-weighting of the edges is wanted.
+            - Common neighbors based pre-weighting
     dim_red_meth : str
-        Dimention reduction method : 'SPECTRAL', 'ISOMAP', 'SOCIODIM', 'SPECTRALSKL'
+        Dimention reduction method : 'SPECTRAL', 'ISOMAP', 'SPECTRALSKL'
     eq_adj : boolean
         If equidistant adjustement if wanted 
-    eta : float
-        value of eta
-    beta : float
-        value of beta
+    eta_r : float
+        value of eta in the radius formula
+    beta_r : float
+        value of beta in the radius formula
+    weight_r : bool   
+        whether the radius is computed by weighted (True) or topological (false) node degree
     res_dict : boolean
         If you wnat a dictionnary type and note a np.array() type embedding
-    weight : None or str        
-        How to calculate degree of a node : None or 'weight'
     
 
     Returns
@@ -57,8 +58,7 @@ def coalescent_embedding_2D(G, pre_weight=True, unweighted_dm=True, dim_red_meth
     # what bools should I put to use the weights of the original graph?
     if pre_weight == True : 
     
-        
-        if unweighted_dm == True : # equivalent to binarization?? True IF we want to binarize the graph, put False to skip the passage (ie if the matrix is already binary/ the graph already unweighted)
+        if binarize == True : # equivalent to binarization?? I feel wether it is true or False here doesn't change the result.
             A = nx.adjacency_matrix(G).toarray()
             A[np.where(A!=0)]=1
             G = nx.from_numpy_array(A)
@@ -77,38 +77,27 @@ def coalescent_embedding_2D(G, pre_weight=True, unweighted_dm=True, dim_red_meth
         
     ## ISOMAP ENBEDDING ##
         
-    if dim_red_meth == 'ISOMAP' :
+    if dim_red_method == 'ISOMAP' :
             
         n_neighbors = int(np.mean(list(dict(nx.degree(G)).values()))) #default = 5
         eigen_solver = 'dense'
         
         # conversion to sparse matrix
-        Or = nx.to_scipy_sparse_matrix(G)
+        Or = nx.to_scipy_sparse_array(G)
         
         # embedding
         embedding = Isomap(n_components=2, n_neighbors=n_neighbors, eigen_solver=eigen_solver)
         embedding_o = embedding.fit_transform(Or)
         
- 
+
     ## Spectral embedding ##
             
-    if dim_red_meth == 'SPECTRAL' :
+    if dim_red_method == 'SPECTRAL' :
         
         embedding_o = np.array(list(nx.spectral_layout(G, dim=2, weight='weight', scale=1).values()))
     
-    ## Sociodim embedding ##
     
-    """
-    if dim_red_meth == 'SOCIODIM' :
-                    
-        model = karateclub.SocioDim(dimensions=2)
-        model.fit(G)
-        embedding_o = model.get_embedding()
-        
-    ## Spectral (Sklearn) embedding ##
-    """
-    
-    if dim_red_meth == 'SPECTRALSKL' :
+    if dim_red_method == 'SPECTRALSKL' :
                         
         # Adjacency matrix
         A = nx.adjacency_matrix(G)
@@ -154,7 +143,10 @@ def coalescent_embedding_2D(G, pre_weight=True, unweighted_dm=True, dim_red_meth
     ########################
     
     # Get degrees
-    deg_o = list(dict(nx.degree(G,weight=weight)).values())    
+    if weight_r == True :
+        deg_o = list(dict(G.degree(weight='weight')).values())
+    else :
+        deg_o = list(dict(nx.degree(G)).values())    
     deg_o_u = np.sort(np.unique(deg_o))[::-1]
     
     # Get order
@@ -164,7 +156,7 @@ def coalescent_embedding_2D(G, pre_weight=True, unweighted_dm=True, dim_red_meth
         order_o[i] = np.where(deg_o_u==deg_o[i])[0][0]+1
     
     # Compute radius
-    radius_o = 2/eta*(beta*np.log(order_o)+ (1-beta)*np.log(np.max(order_o)))
+    radius_o = 2/eta_r*(beta_r*np.log(order_o)+(1-beta_r)*np.log(np.max(order_o)))
 
     # Change the coordinates 
     embedding = embedding_o_ca*np.reshape(radius_o,(len(radius_o),1))  
