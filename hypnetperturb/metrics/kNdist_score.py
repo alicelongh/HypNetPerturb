@@ -119,7 +119,7 @@ def from_embedding_to_idxKNNmatrix_Eucl(coords_gp1, coords_gp2, k):
     return knn_matrix
 
 
-def from_KNNmatrix_to_scores_hyp(coords_gpC, knn_matrix_gpC, coords_gpA):
+def from_KNNmatrix_to_scores_hyp(coords_gpC, knn_matrix_gpC, coords_gpA, den_pow=1):
     """
     
     Parameters
@@ -128,9 +128,7 @@ def from_KNNmatrix_to_scores_hyp(coords_gpC, knn_matrix_gpC, coords_gpA):
     Returns
     -------
     array containing in pos i the sum of distances of node i of gp1 from the k nearest neighbors of node i in gp2, in generale gp1 != gp2 but can be the same. 
-    
-    ---
-    not enough general...
+
     """
     
     l = len(coords_gpC[:,0]) #num nodes
@@ -142,12 +140,11 @@ def from_KNNmatrix_to_scores_hyp(coords_gpC, knn_matrix_gpC, coords_gpA):
     
     for i in range(l):
         
-        dist_arr_CC = hyp_dist(np.ones((k,2))*coords_gpC[i,:], coords_gpC[knn_matrix_gpC[i,:].astype(int),:]) #ensure hyp_dist function is doing the right thing
-        dist_arr_AC = np.abs(hyp_dist(np.ones((k,2))*coords_gpC[i,:], coords_gpC[knn_matrix_gpC[i,:].astype(int),:])-
-                                          hyp_dist(np.ones((k,2))*coords_gpA[i,:], coords_gpA[knn_matrix_gpC[i,:].astype(int),:]))
+        dist_arr_CC = hyp_dist_arr(np.ones((k,2))*coords_gpC[i,:], coords_gpC[knn_matrix_gpC[i,:].astype(int),:]) #ensure hyp_dist function is doing the right thing
+        dist_arr_AC = np.abs(hyp_dist_arr(np.ones((k,2))*coords_gpC[i,:], coords_gpC[knn_matrix_gpC[i,:].astype(int),:])-
+                                          hyp_dist_arr(np.ones((k,2))*coords_gpA[i,:], coords_gpA[knn_matrix_gpC[i,:].astype(int),:]))
        
-        scores_arr[i] = np.sum(dist_arr_AC/dist_arr_CC)
-    
+        scores_arr[i] = np.sum(dist_arr_AC/(dist_arr_CC**den_pow))
     
     if np.any(np.isnan(dist_arr_CC))==True:
          raise ValueError("NaN value in distance array, some distance is not computed correctly")
@@ -157,47 +154,9 @@ def from_KNNmatrix_to_scores_hyp(coords_gpC, knn_matrix_gpC, coords_gpA):
          raise ValueError("NaN value in distance array, some distance is not computed correctly")
         
     return scores_arr 
+ 
 
-
-def from_KNNmatrix_to_scores_hyp_converging(coords_gpC, knn_matrix_gpC, coords_gpA):
-    """
-    *ingreasing the number of N neighbors taken into account the result converges.
-    
-    Parameters
-    ----------
-    
-    Returns
-    -------
-    array containing in pos i the sum of distances of node i of gp1 from the k nearest neighbors of node i in gp2, in generale gp1 != gp2 but can be the same. 
-    
-    """
-    
-    l = len(coords_gpC[:,0]) #num nodes
-    k = len(knn_matrix_gpC[0,:])
-    
-    #dist_arr_CC = create_nan(l) # sum of distances of node i of gp1 from its k nn 
-    #dist_arr_AC = create_nan(l) # sum of distances of node i of gp2 from k nn of gp1
-    scores_arr = create_nan(l)
-    
-    for i in range(l):
-        
-        dist_arr_CC = hyp_dist(np.ones((k,2))*coords_gpC[i,:], coords_gpC[knn_matrix_gpC[i,:].astype(int),:])  
-        dist_arr_AC = np.abs(hyp_dist(np.ones((k,2))*coords_gpC[i,:], coords_gpC[knn_matrix_gpC[i,:].astype(int),:])-
-                                          hyp_dist(np.ones((k,2))*coords_gpA[i,:], coords_gpA[knn_matrix_gpC[i,:].astype(int),:]))
-       
-        scores_arr[i] = np.sum(dist_arr_AC/(dist_arr_CC**2)) #* power 2 ensures convergence when increasing the number of neighbors taken into account
-    
-    
-    if np.any(np.isnan(dist_arr_CC))==True:
-         raise ValueError("NaN value in distance array, some distance is not computed correctly")
-    if np.any(np.isnan(dist_arr_AC))==True:
-         raise ValueError("NaN value in distance array, some distance is not computed correctly")
-    if np.any(np.isnan(scores_arr))==True:
-         raise ValueError("NaN value in distance array, some distance is not computed correctly")
-        
-    return scores_arr 
-
-def from_KNNmatrix_to_scores_Eucl(coords_gpC, knn_matrix_gpC, coords_gpA):
+def from_KNNmatrix_to_scores_Eucl(coords_gpC, knn_matrix_gpC, coords_gpA, den_pow=1):
     """
     
     Parameters
@@ -207,9 +166,6 @@ def from_KNNmatrix_to_scores_Eucl(coords_gpC, knn_matrix_gpC, coords_gpA):
     -------
     array containing in pos i the sum of distances of node i of gp1 from the k nearest neighbors of node i in gp2, in generale gp1 != gp2 but can be the same. 
     
-    !!!
-    ---
-    not enough general...
     """
     
     l = len(coords_gpC[:,0]) #num nodes
@@ -225,7 +181,7 @@ def from_KNNmatrix_to_scores_Eucl(coords_gpC, knn_matrix_gpC, coords_gpA):
         dist_arr_AC = np.absolute(np.array([np.linalg.norm(coords_gpA[i,:]-coords_gpA[knn_matrix_gpC[i,j].astype(int),:]) for j in range(k)])-
                                   np.array([np.linalg.norm(coords_gpC[i,:]-coords_gpC[knn_matrix_gpC[i,j].astype(int),:]) for j in range(k)]))
        
-        scores_arr[i] = np.sum(dist_arr_AC/dist_arr_CC)
+        scores_arr[i] = np.sum(dist_arr_AC/(dist_arr_CC**den_pow))
     
     if np.any(np.isnan(dist_arr_CC))==True:
          raise ValueError("NaN value in distance array, some distance is not computed correctly")
@@ -236,7 +192,7 @@ def from_KNNmatrix_to_scores_Eucl(coords_gpC, knn_matrix_gpC, coords_gpA):
         
     return scores_arr   
 
-def two_nets_kNHD_score(G1, G2, k, **emb_kwargs):
+def two_nets_kNHD_score(G1, G2, k, den_pow=1, **emb_kwargs):
     """
     computing kNHD score between 2 networks after embedding with Coalescent method
 
@@ -260,12 +216,12 @@ def two_nets_kNHD_score(G1, G2, k, **emb_kwargs):
     
     #knn score
     knn_matrix_OO = from_embedding_to_idxKNNmatrix(xy, xy, k)
-    knn_scores_OP = from_KNNmatrix_to_scores_hyp(xy, knn_matrix_OO, xy2)
+    knn_scores_OP = from_KNNmatrix_to_scores_hyp(xy, knn_matrix_OO, xy2, den_pow=den_pow)
 
     return knn_scores_OP
 
 
-def two_nets_kNED_score(G1, G2, k, t, dim, skip):
+def two_nets_kNED_score(G1, G2, k, t, dim, skip, den_pow=1):
     """
     computing kNED score between 2 networks after embedding with Diffusion Maps
 
@@ -285,6 +241,6 @@ def two_nets_kNED_score(G1, G2, k, t, dim, skip):
     
     #knn score
     knn_matrix_OO = from_embedding_to_idxKNNmatrix_Eucl(xy, xy, k)
-    knn_scores_OP = from_KNNmatrix_to_scores_Eucl(xy, knn_matrix_OO, xy2)
+    knn_scores_OP = from_KNNmatrix_to_scores_Eucl(xy, knn_matrix_OO, xy2, den_pow=den_pow)
 
     return knn_scores_OP
