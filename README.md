@@ -1,5 +1,4 @@
-# HypNetPerturb
-Characterization of network perturbations in latent (hyperbolic) space 
+# Network Perturbations in (Hyperbolic) latent space 
 
 -------------
 Definition of scores of local connectivity perturbation based on node continuous displacements in latent space. 
