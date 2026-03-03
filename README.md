@@ -1,4 +1,4 @@
-# characterization of Network Perturbations in latent (Hyperbolic) space 
+# Network Perturbations through the lens of latent (Hyperbolic) space
 
 -------------
 Contains:
