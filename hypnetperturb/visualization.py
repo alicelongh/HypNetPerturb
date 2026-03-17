@@ -201,6 +201,23 @@ def hyperboloid_to_Pdisk(X):
 epsilon = 2**-30
 def near_zero(val):
     return -epsilon <= val <= epsilon
+    
+   
+def hyperboloid_to_unit_disk(X):
+    """
+    Project hyperboloid embedding to a unit disk by
+    simple radial normalization (not Poincaré geometry).
+    """
+
+    Y = X[:, :2].copy()
+
+    rho = np.sqrt(Y[:,0]**2 + Y[:,1]**2)
+    rho_max = rho.max()
+
+    if rho_max > 0:
+        Y /= rho_max
+
+    return Y
 
 
 def plot_Pdisk_embedding_n(Y, edgelist=None, edgelist_colors=None, node_colors=None, sizes=None):
@@ -289,3 +306,7 @@ def plot_Pdisk_embedding(Y, edgelist=None, edgelist_colors=None, node_colors=Non
     d.set_render_size(w=500)
 
     return d
+    
+    
+    
+

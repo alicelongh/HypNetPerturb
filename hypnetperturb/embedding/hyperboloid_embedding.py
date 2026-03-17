@@ -1,7 +1,7 @@
 """
 Created on May 20 2023
 
-@author: alice.longhena
+@author: Alice Longhena, Lily
 
 - estimate_r_opt_hyperbolic
 - inner_product
@@ -64,8 +64,84 @@ def estimate_r_opt_hyperbolic(D): #@Lili
         if f1 < f_min:
             r = r1
             f_min = f1
-
+            
+    Z = -(r**2)*np.cosh(D/r) #added to match Z with r
+    
     return(r,Z) 
+    
+
+def estimate_r_opt_hyperbolic_1(D, n_grid=200, max_cosh_arg=700):
+    """
+    Robust estimate of optimal radius for Wilson hyperbolic embedding.
+
+    Parameters
+    ----------
+    D : ndarray
+        Symmetric distance matrix.
+    n_grid : int
+        Number of radius values to test.
+    max_cosh_arg : float
+        Maximum allowed value of D/r before cosh overflows.
+        ~700 is safe for float64.
+
+    Returns
+    -------
+    best_r : float
+    best_Z : ndarray
+    """
+    D = np.asarray(D, dtype=float)
+
+    if not np.isfinite(D).all():
+        raise ValueError("Distance matrix D contains NaN or inf.")
+
+    dmax = np.max(D)
+
+    if dmax <= 0:
+        raise ValueError("Distance matrix must contain positive off-diagonal entries.")
+
+    # Ensure D/r never starts in a catastrophic overflow regime
+    r_min = max(dmax / max_cosh_arg, 1e-3)
+    r_max = 2 * dmax
+
+    best_r = None
+    best_Z = None
+    best_f = np.inf
+
+    for r in np.linspace(r_min, r_max, n_grid):
+        X = D / r
+
+        # skip unsafe values
+        if np.max(X) >= max_cosh_arg:
+            continue
+
+        Z = -(r ** 2) * np.cosh(X)
+
+        if not np.isfinite(Z).all():
+            continue
+
+        try:
+            evals = np.linalg.eigvalsh(Z)
+        except np.linalg.LinAlgError:
+            continue
+
+        evals = np.sort(evals)
+
+        if D.shape[0] > 3:
+            f = np.sum(np.abs(evals[1:-2]))
+        else:
+            f = np.sum(np.abs(evals[1:-1]))
+
+        if f < best_f:
+            best_f = f
+            best_r = r
+            best_Z = Z.copy()
+
+    if best_r is None:
+        raise RuntimeError(
+            "Could not find a valid radius. Distances may be too large or badly scaled."
+        )
+
+    return best_r, best_Z
     
     
 # Compute matrix of geodesic distances 
@@ -82,7 +158,10 @@ def D_hyperbolic(X, r): #@Lili
     for i in range(np.shape(X)[0]):
         for j in range(np.shape(X)[0]):
             if i != j:
-                D_prime[i, j] = r*np.arccosh(- inner_product(X[i], X[j])/(r**2))
+            	#D_prime[i, j] = r*np.arccosh(- inner_product(X[i], X[j])/(r**2))
+            	arg = -inner_product(X[i], X[j]) / (r**2)
+            	arg = max(arg, 1.0)
+            	D_prime[i, j] = r * np.arccosh(arg)
     return(D_prime)
 
 

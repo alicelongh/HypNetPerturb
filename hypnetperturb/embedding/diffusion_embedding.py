@@ -52,4 +52,45 @@ def diffusion_map(G, t_step, d, skip=0, dict_out=True):
         return maps
     else:
         return maps_dict
+        
+def diffusion_map_1(G, t_step, d, skip=0, dict_out=True):
+    """
+    d: dimension - number of eigenvalues to use - best if corresponds to the number of principal eigenvalues
+
+    Returns:
+
+    maps[:,x] is the vector of coordinates of node x in Euclidean space of dimension d
+    """
+    A = nx.to_numpy_array(G)
+    P = transition_matrix_1step(A)
+
+    N = len(P)
+    maps = np.zeros((d,N))
+    maps_dict = {}
+
+    L, U = np.linalg.eig(P)
+    idx = np.argsort(np.abs(L))[::-skip]
+	L = L[idx]
+	U = U[:, idx]
+    for x in range(N):
+        for i in range(d):
+            maps[i,x] = (L[i]**t_step)*U[x,i]
+    
+        maps_dict[x] = maps[:,x]
+    
+    if dict_out==False:
+        return maps
+    else:
+        return maps_dict
+        
+        
+def diffusion_distance_matrix(G, t_step=1, d=5, skip=1):
+    """
+    Build Euclidean distance matrix in diffusion-map space.
+    """
+    maps = diffusion_map(G, t_step=t_step, d=d, skip=skip, dict_out=False)
+    coords = maps.T   # shape: (N, d)
+    D = squareform(pdist(coords, metric="euclidean"))
+    return D, coords
+
     
