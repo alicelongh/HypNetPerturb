@@ -10,9 +10,6 @@ from networkx.algorithms.tree.mst import maximum_spanning_tree
 import numpy as np
 import networkx as nx
 import warnings
-import matplotlib
-matplotlib.use("Qt5Agg")
-import matplotlib.pyplot as plt
 
 def to_adjacency_matrix(data, n_nodes=None):
     """
@@ -573,6 +570,10 @@ def mst_filtering(
 
 
 if __name__ == "__main__":
+
+    import matplotlib
+    matplotlib.use("Qt5Agg")
+    import matplotlib.pyplot as plt
 
     # -------------------------
     # 1. Build weighted Watts-Strogatz graph
