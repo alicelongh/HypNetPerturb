@@ -564,7 +564,72 @@ def mst_filtering(
 
     return avg_degree_out_target, edgelist_out, A_out
        
-            
+# -------------------------------------------------------
+# Homogeneous filtering 
+# (not priviledging high weights but just decreasing density)
+# -------------------------------------------------------
+
+def homogeneous_filtering(
+    G,
+    target_density=None,
+    target_avg_degree=None,
+    seed=None,
+    binarize=True
+):
+    """
+    Homogeneous filtering: randomly keep edges to reach a target density,
+    without privileging higher weights.
+
+    Parameters
+    ----------
+    G : nx.Graph
+        Input graph (typically fully connected weighted)
+    target_density : float, optional
+        Desired density (0–1)
+    target_avg_degree : float, optional
+        Desired average degree
+    seed : int or None
+        Random seed
+    binarize : bool
+        If True, output graph is unweighted
+
+    Returns
+    -------
+    G_filt : nx.Graph
+        Filtered graph
+    """
+
+    rng = np.random.default_rng(seed)
+
+    N = G.number_of_nodes()
+    edges = list(G.edges(data=True))
+    M_total = len(edges)
+
+    # determine target number of edges
+    if target_density is not None:
+        M_target = int(target_density * N * (N - 1) / 2)
+    elif target_avg_degree is not None:
+        M_target = int(target_avg_degree * N / 2)
+    else:
+        raise ValueError("Specify target_density or target_avg_degree")
+
+    # sample edges uniformly at random
+    selected_idx = rng.choice(M_total, size=M_target, replace=False)
+    selected_edges = [edges[i] for i in selected_idx]
+
+    # build filtered graph
+    G_filt = nx.Graph()
+    G_filt.add_nodes_from(G.nodes(data=True))
+
+    for u, v, d in selected_edges:
+        if binarize:
+            G_filt.add_edge(u, v, weight=1.0)
+        else:
+            G_filt.add_edge(u, v, weight=d.get("weight", 1.0))
+
+    return G_filt
+
+#----------------------------------------------------------------------------------------
 # hierarchical geometrically detected backbone (from 10.1103/PhysRevResearch.2.033519)
 
 
