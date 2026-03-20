@@ -209,7 +209,7 @@ def threshold_simple_filtering(thr, data, path_edgelist_out=None):
     if path_edgelist_out is not None:
         np.savetxt(path_edgelist_out, new_edgelist, fmt="%.6f")
 
-    return avg_degree_out, new_edgelist
+    return avg_degree_out, new_edgelist, new_A
 
 
 # -------------------------------------

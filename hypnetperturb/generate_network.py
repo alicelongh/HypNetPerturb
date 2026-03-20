@@ -5,7 +5,139 @@
 import networkx as nx
 import numpy as np
 
+#------------------------------------------------
+# core-periphery: generative synthetic 
+#------------------------------------------------
+
+def generate_full_weighted_core_periphery_sbm(
+    n_core=20,
+    n_periphery=60,
+    p_cc=0.5,
+    p_cp=0.15,
+    p_pp=0.05,
+    w_max=1.0,
+    seed=42
+):
+    """
+    Generate a fully connected weighted core-periphery network.
+
+    Every pair of distinct nodes is connected.
+    Edge weights are in [0, w_max), and are statistically linked to the
+    corresponding block-level connection probability:
+
+        w_ij = p_ij * U(0, w_max)
+
+    so that, on average:
+        E[w_cc] > E[w_cp] > E[w_pp]
+    whenever:
+        p_cc > p_cp > p_pp
+
+    Parameters
+    ----------
+    n_core : int
+        Number of core nodes.
+    n_periphery : int
+        Number of periphery nodes.
+    p_cc : float
+        Core-core affinity parameter.
+    p_cp : float
+        Core-periphery affinity parameter.
+    p_pp : float
+        Periphery-periphery affinity parameter.
+    w_max : float
+        Maximum weight scale. Final weights are in [0, w_max).
+    seed : int or None
+        Random seed.
+
+    Returns
+    -------
+    G : nx.Graph
+        Fully connected weighted undirected graph.
+        Edge weights are stored in G[u][v]["weight"].
+    labels : dict
+        Dictionary mapping node -> 'core' or 'periphery'.
+    """
+
+    rng = np.random.default_rng(seed)
+
+    N = n_core + n_periphery
+    G = nx.Graph()
+    G.add_nodes_from(range(N))
+
+    labels = {
+        i: ("core" if i < n_core else "periphery")
+        for i in range(N)
+    }
+
+    nx.set_node_attributes(G, labels, "cp_label")
+
+    for i in range(N):
+        for j in range(i + 1, N):
+            li = labels[i]
+            lj = labels[j]
+
+            if li == "core" and lj == "core":
+                p = p_cc
+            elif li == "periphery" and lj == "periphery":
+                p = p_pp
+            else:
+                p = p_cp
+
+            w = p * rng.uniform(0, w_max)
+            w = min(w, np.nextafter(w_max, 0))
+
+            G.add_edge(i, j, weight=float(w))
+
+    return G, labels
+
+def generate_core_periphery_sbm(
+    n_core=20,
+    n_periphery=60,
+    p_cc=0.5,
+    p_cp=0.15,
+    p_pp=0.05,
+    seed=42
+):
+    """
+    Generate a stochastic block model with core–periphery structure.
+
+    Returns
+    -------
+    G : nx.Graph
+    labels : dict
+        node -> 'core' or 'periphery'
+    """
+
+    sizes = [n_core, n_periphery]
+    probs = [
+        [p_cc, p_cp],
+        [p_cp, p_pp]
+    ]
+
+    G = nx.stochastic_block_model(sizes, probs, seed=seed)
+
+    labels = {
+        i: ("core" if i < n_core else "periphery")
+        for i in G.nodes()
+    }
+
+    # store label inside graph
+    nx.set_node_attributes(G, labels, "cp_label")
+
+    return G, labels
+    
+# -------------------------------------------------------
+# Hyperbolic networks
+# -------------------------------------------------------
+
+def generate_sodt_hyperbolic_nx(beta=1.5, n=100, gamma=2.7, mean_degree=5):
+
+	G = nx.geometric_soft_configuration_graph(beta=beta, n=n, gamma=gamma, mean_degree=mean_degree)
+	
+	return G
+    
 def generate_hyperbolic_network(N, R, T=0.01, zeta=1):
+
     # N: Number of nodes
     # R: Radius of the hyperbolic disk
     # T: Temperature controlling randomness of connections (0 <= T <= 1)
@@ -50,6 +182,9 @@ def generate_hyperbolic_network(N, R, T=0.01, zeta=1):
     
     return G
 
+# ---------------------------------------------
+# Synthetic networks x perturbation simulation
+# ---------------------------------------------
 
 def generate_network(model):
 
