@@ -629,6 +629,166 @@ def homogeneous_filtering(
 
     return G_filt
 
+
+#----------------------------------------------------------------------------------------
+# Core-periphery proportional filtering
+#----------------------------------------------------------------------------------------
+# (used for a test, not sure is meaningful in general)
+
+def filter_core_periphery_preserving_blocks(
+    G,
+    labels,
+    target_p_cc=None,
+    target_p_cp=None,
+    target_p_pp=None,
+    reference_graph=None,
+    mode="threshold_within_block",
+    seed=None,
+    binarize=True
+):
+    """
+    Filter a weighted graph while preserving core-periphery block structure.
+
+    Parameters
+    ----------
+    G : nx.Graph
+        Input weighted graph, typically fully connected.
+    labels : dict
+        node -> 'core' or 'periphery'
+    target_p_cc, target_p_cp, target_p_pp : float or None
+        Target blockwise densities to enforce in the filtered graph.
+        If None, they can be inferred from `reference_graph`.
+    reference_graph : nx.Graph or None
+        Optional reference graph from which blockwise densities are estimated.
+        Used only if target_p_cc / target_p_cp / target_p_pp are None.
+    mode : str
+        'threshold_within_block' : keep strongest edges separately within cc/cp/pp
+        'random_within_block'    : sample edges uniformly within cc/cp/pp
+    seed : int or None
+        Random seed.
+    binarize : bool
+        If True, output graph is binarized (weight=1.0 for kept edges).
+
+    Returns
+    -------
+    G_filt : nx.Graph
+        Filtered graph preserving target blockwise densities.
+    densities : dict
+        Target densities actually used.
+    """
+
+    rng = np.random.default_rng(seed)
+
+    # --- helper: empirical block densities from a graph ---
+    def estimate_block_densities(H, labels):
+        core_nodes = [n for n, lab in labels.items() if lab == "core"]
+        peri_nodes = [n for n, lab in labels.items() if lab == "periphery"]
+
+        n_c = len(core_nodes)
+        n_p = len(peri_nodes)
+
+        m_cc = 0
+        m_cp = 0
+        m_pp = 0
+
+        for u, v in H.edges():
+            lu, lv = labels[u], labels[v]
+            if lu == "core" and lv == "core":
+                m_cc += 1
+            elif lu == "periphery" and lv == "periphery":
+                m_pp += 1
+            else:
+                m_cp += 1
+
+        p_cc = m_cc / (n_c * (n_c - 1) / 2) if n_c > 1 else 0.0
+        p_cp = m_cp / (n_c * n_p) if n_c > 0 and n_p > 0 else 0.0
+        p_pp = m_pp / (n_p * (n_p - 1) / 2) if n_p > 1 else 0.0
+
+        return p_cc, p_cp, p_pp
+
+    # --- infer target block densities if needed ---
+    if reference_graph is not None:
+        ref_p_cc, ref_p_cp, ref_p_pp = estimate_block_densities(reference_graph, labels)
+        if target_p_cc is None:
+            target_p_cc = ref_p_cc
+        if target_p_cp is None:
+            target_p_cp = ref_p_cp
+        if target_p_pp is None:
+            target_p_pp = ref_p_pp
+
+    if target_p_cc is None or target_p_cp is None or target_p_pp is None:
+        raise ValueError("Provide target block densities or a reference_graph.")
+
+    # --- split nodes ---
+    core_nodes = [n for n, lab in labels.items() if lab == "core"]
+    peri_nodes = [n for n, lab in labels.items() if lab == "periphery"]
+
+    n_c = len(core_nodes)
+    n_p = len(peri_nodes)
+
+    # --- collect edges by block type ---
+    edges_cc = []
+    edges_cp = []
+    edges_pp = []
+
+    for u, v, d in G.edges(data=True):
+        lu, lv = labels[u], labels[v]
+        w = d.get("weight", 1.0)
+
+        if lu == "core" and lv == "core":
+            edges_cc.append((u, v, w))
+        elif lu == "periphery" and lv == "periphery":
+            edges_pp.append((u, v, w))
+        else:
+            edges_cp.append((u, v, w))
+
+    # --- target number of edges per block ---
+    M_cc_target = int(round(target_p_cc * n_c * (n_c - 1) / 2))
+    M_cp_target = int(round(target_p_cp * n_c * n_p))
+    M_pp_target = int(round(target_p_pp * n_p * (n_p - 1) / 2))
+
+    M_cc_target = min(M_cc_target, len(edges_cc))
+    M_cp_target = min(M_cp_target, len(edges_cp))
+    M_pp_target = min(M_pp_target, len(edges_pp))
+
+    def select_edges(edge_list, M_target, mode, rng):
+        if M_target <= 0 or len(edge_list) == 0:
+            return []
+
+        if mode == "threshold_within_block":
+            # keep strongest edges within this block
+            edge_list_sorted = sorted(edge_list, key=lambda x: x[2], reverse=True)
+            return edge_list_sorted[:M_target]
+
+        elif mode == "random_within_block":
+            idx = rng.choice(len(edge_list), size=M_target, replace=False)
+            return [edge_list[i] for i in idx]
+
+        else:
+            raise ValueError("mode must be 'threshold_within_block' or 'random_within_block'.")
+
+    sel_cc = select_edges(edges_cc, M_cc_target, mode, rng)
+    sel_cp = select_edges(edges_cp, M_cp_target, mode, rng)
+    sel_pp = select_edges(edges_pp, M_pp_target, mode, rng)
+
+    # --- build filtered graph ---
+    G_filt = nx.Graph()
+    G_filt.add_nodes_from(G.nodes(data=True))
+
+    for u, v, w in sel_cc + sel_cp + sel_pp:
+        if binarize:
+            G_filt.add_edge(u, v, weight=1.0)
+        else:
+            G_filt.add_edge(u, v, weight=float(w))
+
+    densities = {
+        "p_cc": target_p_cc,
+        "p_cp": target_p_cp,
+        "p_pp": target_p_pp
+    }
+
+    return G_filt, densities
+
 #----------------------------------------------------------------------------------------
 # hierarchical geometrically detected backbone (from 10.1103/PhysRevResearch.2.033519)
 
@@ -733,6 +893,7 @@ if __name__ == "__main__":
     plt.show()       
             
             
+
             
             
             

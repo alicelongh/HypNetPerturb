@@ -130,7 +130,7 @@ def generate_core_periphery_sbm(
 # Hyperbolic networks
 # -------------------------------------------------------
 
-def generate_sodt_hyperbolic_nx(beta=1.5, n=100, gamma=2.7, mean_degree=5):
+def generate_soft_hyperbolic_nx(beta=1.5, n=100, gamma=2.7, mean_degree=5):
 
 	G = nx.geometric_soft_configuration_graph(beta=beta, n=n, gamma=gamma, mean_degree=mean_degree)
 	
