@@ -6,6 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "hypnetperturb"
 version = "0.1.0"
 description = "Hyperbolic network perturbation metrics and embeddings"
+authors = [
+    { name = "Alice Longhena" }
+]
 requires-python = ">=3.9"
 dependencies = [
   "numpy>=1.23",
