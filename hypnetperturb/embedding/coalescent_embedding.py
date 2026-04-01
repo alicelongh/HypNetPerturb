@@ -127,7 +127,7 @@ def coalescent_embedding_2D(G, pre_weight=True, binarize=True, dim_red_method='S
         # New theta
         theta_o_eqd = np.zeros(len(theta_o))
         
-        # New angle increament
+        # New angle increment
         delta_theta = 2*np.pi/len(theta_o)
         
         # Give new adjustements
