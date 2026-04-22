@@ -263,50 +263,122 @@ def plot_Pdisk_embedding_n(Y, edgelist=None, edgelist_colors=None, node_colors=N
 
     return d
 
-def plot_Pdisk_embedding(Y, edgelist=None, edgelist_colors=None, node_colors=None, sizes=None):
-    """
-    Y: coordinates of points in array form [X,Y]
-    edgelist: list of edges to plot [[i,j],...] in array/list form
-    colors: array of colors to assign to nodes in order
+# def plot_Pdisk_embedding(Y, edgelist=None, edgelist_colors=None, node_colors=None, sizes=None):
+#     """
+#     Y: coordinates of points in array form [X,Y]
+#     edgelist: list of edges to plot [[i,j],...] in array/list form
+#     colors: array of colors to assign to nodes in order
      
+#     """
+#     pts = []
+#     R_Y = np.sqrt(Y[:,0]**2+Y[:,1]**2)
+#     R = np.max(R_Y)
+#     f = 1000
+#     print("R = ",R)
+#     #Y = Y/f
+
+#     d = Drawing(2*R, 2*R, origin='center')
+#     d.draw(euclid.Circle(0, 0, R), fill="aliceblue")
+
+#     if node_colors is None: 
+#         node_colors = len(Y[:,0])*['red']
+#     if sizes is None: 
+#         sizes = len(Y[:,0])*[R/len(Y[:,0])]
+#     print(sizes)
+
+#     for i in range(len(Y[:,0])):
+#         #pt = Point(Y[i,0],Y[i,1])
+#         pt = Point(Y[i,0],Y[i,1])
+#         d.draw(pt, hradius=sizes[i], fill=node_colors[i])
+#         #d.draw(draw.Text(str(i), 0.01, *pt, center=0.7))
+#         pts.append(pt)
+
+#     if edgelist is not None:
+#         if edgelist_colors is None:
+#             edgelist_colors=['gray']*len(edgelist)
+#         for j in range(len(edgelist[:,0])):
+#             i1,i2 = edgelist[j,0],edgelist[j,1]
+#             if near_zero(pts[i1][0]-pts[i2][0]) and near_zero(pts[i2][0]-pts[i2][0]):
+#                 continue
+#             hl = Line.from_points(*pts[i1],*pts[i2], segment=True)
+#             d.draw(hl, hwidth=0.02, fill=edgelist_colors[j], opacity=0.8) #stroke_dasharray='5,2'
+            
+#     d.set_render_size(w=500)
+
+#     return d
+    
+    
+def plot_Pdisk_embedding(
+    Y,
+    edgelist=None,
+    edgelist_colors=None,
+    node_colors=None,
+    sizes=None,
+    node_labels=None,
+    r_star=0.3,
+    label_fontsize=8,
+    label_dx=0.01,
+    label_dy=0.01,
+    label_color="black",
+):
+    """
+    Y: coordinates of points in array form [X, Y]
+    edgelist: list/array of edges to plot [[i, j], ...]
+    node_colors: list of node colors
+    sizes: list of node sizes
+    node_labels: list of labels, same order as Y
+    r_star: annotate only nodes with normalized radial coordinate r < r_star
     """
     pts = []
-    R_Y = np.sqrt(Y[:,0]**2+Y[:,1]**2)
+    R_Y = np.sqrt(Y[:, 0]**2 + Y[:, 1]**2)
     R = np.max(R_Y)
-    f = 1000
-    print("R = ",R)
-    #Y = Y/f
 
-    d = Drawing(2*R, 2*R, origin='center')
+    print("R =", R)
+
+    d = Drawing(2 * R, 2 * R, origin='center')
     d.draw(euclid.Circle(0, 0, R), fill="aliceblue")
 
-    if node_colors is None: 
-        node_colors = len(Y[:,0])*['red']
-    if sizes is None: 
-        sizes = len(Y[:,0])*[R/len(Y[:,0])]
+    n = len(Y[:, 0])
+
+    if node_colors is None:
+        node_colors = ['red'] * n
+    if sizes is None:
+        sizes = [R / n] * n
+
     print(sizes)
 
-    for i in range(len(Y[:,0])):
-        #pt = Point(Y[i,0],Y[i,1])
-        pt = Point(Y[i,0],Y[i,1])
+    for i in range(n):
+        x, y = Y[i, 0], Y[i, 1]
+        pt = Point(x, y)
         d.draw(pt, hradius=sizes[i], fill=node_colors[i])
-        #d.draw(draw.Text(str(i), 0.01, *pt, center=0.7))
         pts.append(pt)
+
+        if node_labels is not None:
+            r_i = np.sqrt(x**2 + y**2) / R if R > 0 else 0.0
+            if r_i < r_star and str(node_labels[i]) != "":
+                d.append(
+                    draw.Text(
+                        str(node_labels[i]),
+                        label_fontsize,
+                        x + label_dx,
+                        y + label_dy,
+                        fill=label_color,
+                    )
+                )
 
     if edgelist is not None:
         if edgelist_colors is None:
-            edgelist_colors=['gray']*len(edgelist)
-        for j in range(len(edgelist[:,0])):
-            i1,i2 = edgelist[j,0],edgelist[j,1]
-            if near_zero(pts[i1][0]-pts[i2][0]) and near_zero(pts[i2][0]-pts[i2][0]):
-                continue
-            hl = Line.from_points(*pts[i1],*pts[i2], segment=True)
-            d.draw(hl, hwidth=0.02, fill=edgelist_colors[j], opacity=0.8) #stroke_dasharray='5,2'
-            
-    d.set_render_size(w=500)
+            edgelist_colors = ['gray'] * len(edgelist)
 
+        for j in range(len(edgelist[:, 0])):
+            i1, i2 = edgelist[j, 0], edgelist[j, 1]
+
+            if near_zero(pts[i1][0] - pts[i2][0]) and near_zero(pts[i1][1] - pts[i2][1]):
+                continue
+
+            hl = Line.from_points(*pts[i1], *pts[i2], segment=True)
+            d.draw(hl, hwidth=0.02, fill=edgelist_colors[j], opacity=0.8)
+
+    d.set_render_size(w=500)
     return d
-    
-    
-    
 
