@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from hyperbolic import euclid, util
 from hyperbolic.poincare import *
+from hypnetperturb.embedding.distance import hyp_dist_poincare
 import warnings 
 
 """
@@ -382,3 +383,153 @@ def plot_Pdisk_embedding(
     d.set_render_size(w=500)
     return d
 
+def plot_Pdisk_embedding_with_focus_node(
+    Y,
+    focus_node_idx,
+    focus_radius,
+    labels=None,
+    edgelist=None,
+    edgelist_colors=None,
+    node_colors=None,
+    sizes=None,
+    focus_node_color="black",
+    focus_ball_color="none",
+    focus_ball_edge_color="black",
+    label_fontsize=0.03,
+    edge_width=0.02,
+    node_opacity=1.0,
+    edge_opacity=0.8,
+    render_size=500,
+):
+    """
+    Plot a Poincare disk embedding and label nodes falling inside a
+    hyperbolic ball centered on a focus node.
+
+    Parameters
+    ----------
+    Y : ndarray, shape (N, 2)
+        Node coordinates in the Poincare disk.
+
+    focus_node_idx : int
+        Index of the focus node, e.g. the regressor node.
+
+    focus_radius : float
+        Hyperbolic radius around the focus node.
+        Nodes with d_H(node, focus_node) <= focus_radius are labeled.
+
+    labels : list of str or None
+        Node labels. If None, node indices are used.
+
+    edgelist : ndarray, shape (E, 2), optional
+        Edges as integer node-index pairs.
+
+    edgelist_colors : list, optional
+        Colors for edges.
+
+    node_colors : list, optional
+        Colors for nodes.
+
+    sizes : list, optional
+        Node sizes.
+
+    focus_node_color : str
+        Color assigned to the focus node.
+
+    label_fontsize : float
+        Text size for labeled nodes.
+
+    Returns
+    -------
+    d : hyperbolic.Drawing
+        Drawing object.
+    """
+
+    Y = np.asarray(Y, dtype=float)
+
+    if Y.ndim != 2 or Y.shape[1] != 2:
+        raise ValueError("Y must have shape (N, 2).")
+
+    n_nodes = Y.shape[0]
+
+    if focus_node_idx < 0 or focus_node_idx >= n_nodes:
+        raise ValueError("focus_node_idx is outside the valid node range.")
+
+    if labels is None:
+        labels = [str(i) for i in range(n_nodes)]
+
+    if node_colors is None:
+        node_colors = ["red"] * n_nodes
+    else:
+        node_colors = list(node_colors)
+
+    node_colors[focus_node_idx] = focus_node_color
+
+    R_Y = np.sqrt(Y[:, 0] ** 2 + Y[:, 1] ** 2)
+    R = np.max(R_Y)
+
+    if R <= 0:
+        R = 1.0
+
+    if sizes is None:
+        sizes = [R / n_nodes] * n_nodes
+
+    print("R = ", R)
+    print("sizes = ", sizes)
+
+    d = Drawing(2 * R, 2 * R, origin="center")
+    d.draw(euclid.Circle(0, 0, R), fill="aliceblue")
+
+    pts = []
+
+    for i in range(n_nodes):
+        pt = Point(Y[i, 0], Y[i, 1])
+        d.draw(
+            pt,
+            hradius=sizes[i],
+            fill=node_colors[i],
+            opacity=node_opacity,
+        )
+        pts.append(pt)
+
+    if edgelist is not None:
+        edgelist = np.asarray(edgelist, dtype=int)
+
+        if edgelist_colors is None:
+            edgelist_colors = ["gray"] * len(edgelist)
+
+        for j in range(len(edgelist)):
+            i1, i2 = edgelist[j, 0], edgelist[j, 1]
+
+            if i1 == i2:
+                continue
+
+            if np.allclose(Y[i1], Y[i2]):
+                continue
+
+            hl = Line.from_points(*pts[i1], *pts[i2], segment=True)
+            d.draw(
+                hl,
+                hwidth=edge_width,
+                fill=edgelist_colors[j],
+                opacity=edge_opacity,
+            )
+
+    focus_coord = Y[focus_node_idx]
+
+    for i in range(n_nodes):
+        dist_to_focus = hyp_dist_poincare(Y[i], focus_coord)
+
+        if dist_to_focus <= focus_radius:
+            d.draw(
+                euclid.Text(
+                    labels[i],
+                    Y[i, 0],
+                    Y[i, 1],
+                    font_size=label_fontsize,
+                ),
+                fill="black",
+            )
+
+    d.set_render_size(w=render_size)
+
+    return d

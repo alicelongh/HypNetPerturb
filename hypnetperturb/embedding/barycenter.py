@@ -2,10 +2,78 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import copy
+from hypnetperturb.embedding.distance import *
+
 
 ###
 ### BARYCENTER COMPUTATION IN THE HYPERBOLIC SPACE ###
 ###
+
+def barycenter_computation_hyp_xy(coords, z_init_c=[0,0], step_size=1e-3, d=1e6, d_min=1e-3):
+    """
+
+    Parameters
+    ----------
+    coords : array N*2
+        Cartesian coordiantes of the nodes in the Poincaré's disc' [x,y] 
+    z_init_c : array 1*2, optional
+        Initialisation of the barycenter research. The default is [0,0].
+    step_size : float, optional
+        Step size in the algorithm. The default is 1e-3.
+    d : float, optional
+        d initialization. The default is 1e6.
+    d_min : float, optional
+        Limit of convergence. The default is 1e-3.
+
+    Returns
+    -------
+    z_c : Complex number
+        coordinates of the complex barycenter
+
+    """
+    
+    # Coordinates data to complex data 
+    Z = coords[:,0]+coords[:,1]*1j
+    
+    # Initialisation complexe
+    z_c = z_init_c[0]+z_init_c[1]*1j
+    
+    # Define variables
+    n = len(Z) 
+    
+    # Ini 
+    i = 0
+    
+    # Iteration 
+    while d>d_min and i<10000: 
+        # Save old z_c value
+        z_c_old = z_c
+        
+        # Mu update
+        mu = 2/n*np.sum(log_z(z_c, Z))
+        
+        # z_c update 
+        z_c = exp_z(z_c, step_size*mu)
+        
+        # d update 
+        d = np.sqrt((np.abs(mu)**2)/(1-np.abs(z_c)**2)**2)
+        
+        #print(z_c)
+        
+        # Implementation
+        i+=1
+    
+    
+    # if i =1000
+    if i == 1000 : 
+        print('[i] CAUTION : d_min value not achieved')
+        
+    # verify z_c not nan
+    if np.isnan(np.real(z_c)) or np.isnan(np.imag(z_c)):
+        return z_c_old
+        
+    return z_c
+
 
 def barycenter_computation_hyp(coords, z_init_c=[0,0], step_size=1e-3, d=1e6, d_min=1e-3):
     """
@@ -13,7 +81,7 @@ def barycenter_computation_hyp(coords, z_init_c=[0,0], step_size=1e-3, d=1e6, d_
     Parameters
     ----------
     coords : array N*2
-        Polar coordiantes of the nodes in the Poincaré's disc' [r,th]
+        Polar coordiantes of the nodes in the Poincaré's disc' [r,th] 
     z_init_c : array 1*2, optional
         Initialisation of the barycenter research. The default is [0,0].
     step_size : float, optional
@@ -369,3 +437,34 @@ def D_hyperbolic(X, r): #@Lili
             if i != j:
                 D_prime[i, j] = r*np.arccosh(- inner_product(X[i], X[j])/(r**2))
     return(D_prime)
+
+
+def cluster_dispersion_hypPdisk(X, centroid, p=1):
+    """
+    Dispersion of points around a centroid in the Poincare disk.
+
+    X : ndarray, shape (N, 2)
+        Disk coordinates [x, y].
+    centroid : ndarray, shape (2,)
+        Disk coordinates [x, y].
+    p : int or float
+        Dispersion exponent.
+    """
+    X = np.asarray(X, dtype=float)
+    centroid = np.asarray(centroid, dtype=float)
+
+    if len(X) == 0:
+        return np.nan
+
+    S = 0.0
+
+    for i in range(len(X)):
+        dist = hyp_dist_poincare(X[i, :], centroid)
+        S += dist ** p
+
+    S = (S / len(X)) ** (1.0 / p)
+
+    if S < 0:
+        raise ValueError("Dispersion measure has to be positive.")
+
+    return float(S)

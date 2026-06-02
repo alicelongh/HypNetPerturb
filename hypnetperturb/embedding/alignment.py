@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
-from distance import *
+from hypnetperturb.embedding.distance import *
 
 ###
 ### ALIGNMENT: embedding introduces a random rotation, align ails at minimizing the effect of this on score computations ###
@@ -202,8 +202,12 @@ def hyperbol_similarity_grap(embedding_1, embedding_2, dist = 'HYP'):
         theta_2 = np.arctan2(embedding_2[i][1], embedding_2[i][0])
         
         if dist == 'HYP' :
-            dista = hyp_dist(r_1, r_2, theta_1, theta_2)
-            
+            dista = hyp_dist(
+                np.array([r_1, theta_1]),
+                np.array([r_2, theta_2]),
+                ref="polar",
+            )
+                    
         if dist == 'EUCL' :
             dista = eucl_distance(embedding_1[i], embedding_2[i])
         

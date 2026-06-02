@@ -330,3 +330,32 @@ def hyp_dist_matrix(gp1, gp2):
     # for now I will keep them in the distance matrix and then skip them when selecting the k nearest neighbors 
     
     return dist_matrix
+
+def hyp_dist_poincare(arr1, arr2, eps=1e-12):
+    """
+    Hyperbolic distance between two points in the Poincare disk.
+
+    Parameters
+    ----------
+    arr1, arr2 : array-like
+        Coordinates [x, y] inside the unit disk.
+
+    Returns
+    -------
+    dist : float
+        Hyperbolic distance.
+    """
+    arr1 = np.asarray(arr1, dtype=float)
+    arr2 = np.asarray(arr2, dtype=float)
+
+    norm1_sq = np.sum(arr1 ** 2)
+    norm2_sq = np.sum(arr2 ** 2)
+    diff_sq = np.sum((arr1 - arr2) ** 2)
+
+    denom = (1.0 - norm1_sq) * (1.0 - norm2_sq)
+    denom = max(denom, eps)
+
+    cosh_d = 1.0 + 2.0 * diff_sq / denom
+    cosh_d = np.clip(cosh_d, 1.0, None)
+
+    return np.arccosh(cosh_d)
