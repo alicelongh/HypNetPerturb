@@ -16,7 +16,7 @@ from hypnetperturb.embedding.distance import *
 ### COALESCENT EMBEDDING: from the graph to the embedding, with a dimension reduction method and a circular adjustement
 #============================================================================================================================
     
-def coalescent_embedding_2D(G, pre_weight=True, binarize=True, dim_red_method='SPECTRAL', eq_adj=True, eta_r=1, beta_r=1, weight_r=False, res_dict=True):
+def coalescent_embedding_2D(G, pre_weight=True, binarize=True, dim_red_method='SPECTRAL', eq_adj=True, eta_r=1, beta_r=1, weight_r=False, radius_values=None, res_dict=True):
     """
 
     Parameters
@@ -142,24 +142,39 @@ def coalescent_embedding_2D(G, pre_weight=True, binarize=True, dim_red_method='S
     ## RADIAL COORDINATES ##
     ########################
     
-    # Get degrees
-    if weight_r == True :
-        deg_o = list(dict(G.degree(weight='weight')).values())
-    else :
-        deg_o = list(dict(nx.degree(G)).values())    
-    deg_o_u = np.sort(np.unique(deg_o))[::-1]
-    
-    # Get order
-    order_o = np.zeros(len(deg_o))
-    
-    for i in range(len(deg_o)):
-        order_o[i] = np.where(deg_o_u==deg_o[i])[0][0]+1
-    
-    # Compute radius
-    radius_o = 2/eta_r*(beta_r*np.log(order_o)+(1-beta_r)*np.log(np.max(order_o)))
+    if radius_values is None:
 
-    # Change the coordinates 
-    embedding = embedding_o_ca*np.reshape(radius_o,(len(radius_o),1))  
+        # Get degrees
+        if weight_r:
+            deg_o = list(dict(G.degree(weight="weight")).values())
+        else:
+            deg_o = list(dict(nx.degree(G)).values())
+
+        deg_o_u = np.sort(np.unique(deg_o))[::-1]
+
+        # Get order
+        order_o = np.zeros(len(deg_o))
+
+        for i in range(len(deg_o)):
+            order_o[i] = np.where(deg_o_u == deg_o[i])[0][0] + 1
+
+        # Compute radius
+        radius_o = 2 / eta_r * (
+            beta_r * np.log(order_o)
+            + (1 - beta_r) * np.log(np.max(order_o))
+        )
+
+    else:
+        radius_o = np.asarray(radius_values, dtype=float)
+
+        if len(radius_o) != embedding_o_ca.shape[0]:
+            raise ValueError(
+                f"radius_values has length {len(radius_o)}, "
+                f"but graph has {embedding_o_ca.shape[0]} nodes."
+            )
+
+    # Change the coordinates
+    embedding = embedding_o_ca * np.reshape(radius_o, (len(radius_o), 1))  
 
     # Return dictionnary type embedding
     if res_dict == True :
