@@ -1,4 +1,4 @@
-"""2023 @author: Martin Guillemaud"""
+"""2023 @authors: Martin Guillemaud; Alice Longhena"""
 
 import networkx as nx
 import numpy as np

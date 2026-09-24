@@ -1,5 +1,5 @@
 """
-@author: Alice
+@author: Alice Longhena
 """
 
 from __future__ import annotations
